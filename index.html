@@ -235,6 +235,22 @@ canvas{ touch-action:none; cursor:cell; image-rendering:pixelated; }
       <div class="uni-head"><span class="uni-name">Universe F</span><span>Live <b id="popF">0</b> · Grids <b id="gridsF">0</b></span></div>
       <div class="boardwrap"><canvas id="boardF"></canvas></div>
     </div>
+    <div class="uni" data-uni="G">
+      <div class="uni-head"><span class="uni-name">Universe G</span><span>Live <b id="popG">0</b> · Grids <b id="gridsG">0</b></span></div>
+      <div class="boardwrap"><canvas id="boardG"></canvas></div>
+    </div>
+    <div class="uni" data-uni="H">
+      <div class="uni-head"><span class="uni-name">Universe H</span><span>Live <b id="popH">0</b> · Grids <b id="gridsH">0</b></span></div>
+      <div class="boardwrap"><canvas id="boardH"></canvas></div>
+    </div>
+    <div class="uni" data-uni="I">
+      <div class="uni-head"><span class="uni-name">Universe I</span><span>Live <b id="popI">0</b> · Grids <b id="gridsI">0</b></span></div>
+      <div class="boardwrap"><canvas id="boardI"></canvas></div>
+    </div>
+    <div class="uni" data-uni="J">
+      <div class="uni-head"><span class="uni-name">Universe J</span><span>Live <b id="popJ">0</b> · Grids <b id="gridsJ">0</b></span></div>
+      <div class="boardwrap"><canvas id="boardJ"></canvas></div>
+    </div>
   </div>
 
   <div class="duo" id="graphView" hidden>
@@ -262,9 +278,25 @@ canvas{ touch-action:none; cursor:cell; image-rendering:pixelated; }
       <div class="uni-head"><span class="uni-name">Universe F</span></div>
       <div class="graphwrap"><canvas id="graphCanvasF"></canvas><div class="legend" id="graphLegendF"><div class="loghint">No grids yet.</div></div></div>
     </div>
+    <div class="uni" data-uni="G">
+      <div class="uni-head"><span class="uni-name">Universe G</span></div>
+      <div class="graphwrap"><canvas id="graphCanvasG"></canvas><div class="legend" id="graphLegendG"><div class="loghint">No grids yet.</div></div></div>
+    </div>
+    <div class="uni" data-uni="H">
+      <div class="uni-head"><span class="uni-name">Universe H</span></div>
+      <div class="graphwrap"><canvas id="graphCanvasH"></canvas><div class="legend" id="graphLegendH"><div class="loghint">No grids yet.</div></div></div>
+    </div>
+    <div class="uni" data-uni="I">
+      <div class="uni-head"><span class="uni-name">Universe I</span></div>
+      <div class="graphwrap"><canvas id="graphCanvasI"></canvas><div class="legend" id="graphLegendI"><div class="loghint">No grids yet.</div></div></div>
+    </div>
+    <div class="uni" data-uni="J">
+      <div class="uni-head"><span class="uni-name">Universe J</span></div>
+      <div class="graphwrap"><canvas id="graphCanvasJ"></canvas><div class="legend" id="graphLegendJ"><div class="loghint">No grids yet.</div></div></div>
+    </div>
   </div>
 
-  <div class="hint">Six worlds start out running independently in lockstep (shared generation count, shared rules above). "Random" rolls a fresh independent pattern into every universe. Whenever a universe's grids all die out, it drops out of the lineup (its panels hide). Once only three are left standing, the run auto-pauses and "breeds" every pairwise combination of those three survivors — XOR of each parent's ORIGINAL starting pattern (frozen the moment it was born, never its current evolved state) — back into the empty slots, refilling the lineup to six so you can Run again. If two or more die in the very same tick and that drops the count below three, the longest-lived of that tick's casualties are pulled back in (by their own original pattern) to round the parent pool out to three. Click or drag extra cells into any active board's center third to perturb it. A tick that would spill past an edge creates a new grid there (seeded from the overflowing edge-third, if it meets the minimum reproduction size — otherwise those cells warp to the opposite edge instead). Grid lifespan and stall window (trend-line slope near zero) remove a grid after that many generations, whichever comes first.</div>
+  <div class="hint">Ten worlds start out running independently in lockstep (shared generation count, shared rules above). "Random" rolls a fresh independent pattern into every universe. Whenever a universe's grids all die out, it drops out of the lineup (its panels hide). Once only four are left standing, the run auto-pauses and "breeds" every pairwise combination of those four survivors (six pairs) — XOR of each parent's ORIGINAL starting pattern (frozen the moment it was born, never its current evolved state) — back into the empty slots, refilling the lineup to ten so you can Run again. If two or more die in the very same tick and that drops the count below four, the longest-lived of that tick's casualties are pulled back in (by their own original pattern) to round the parent pool out to four. Click or drag extra cells into any active board's center third to perturb it. A tick that would spill past an edge creates a new grid there (seeded from the overflowing edge-third, if it meets the minimum reproduction size — otherwise those cells warp to the opposite edge instead). Grid lifespan and stall window (trend-line slope near zero) remove a grid after that many generations, whichever comes first.</div>
 
   <div class="duo">
     <div class="logpanel" data-uni="A">
@@ -290,6 +322,22 @@ canvas{ touch-action:none; cursor:cell; image-rendering:pixelated; }
     <div class="logpanel" data-uni="F">
       <h2>Grid creation log — F</h2>
       <div id="creationLogF"><div class="loghint">No grids created yet.</div></div>
+    </div>
+    <div class="logpanel" data-uni="G">
+      <h2>Grid creation log — G</h2>
+      <div id="creationLogG"><div class="loghint">No grids created yet.</div></div>
+    </div>
+    <div class="logpanel" data-uni="H">
+      <h2>Grid creation log — H</h2>
+      <div id="creationLogH"><div class="loghint">No grids created yet.</div></div>
+    </div>
+    <div class="logpanel" data-uni="I">
+      <h2>Grid creation log — I</h2>
+      <div id="creationLogI"><div class="loghint">No grids created yet.</div></div>
+    </div>
+    <div class="logpanel" data-uni="J">
+      <h2>Grid creation log — J</h2>
+      <div id="creationLogJ"><div class="loghint">No grids created yet.</div></div>
     </div>
   </div>
 </div>
@@ -345,7 +393,10 @@ canvas{ touch-action:none; cursor:cell; image-rendering:pixelated; }
     };
   }
 
-  var UNI_IDS = ['A', 'B', 'C', 'D', 'E', 'F'];
+  // N survivors need C(N,2) children, so total slots = N + C(N,2):
+  // N=3 -> 6 (the original lineup), N=4 -> 10.
+  var BREED_THRESHOLD = 4;
+  var UNI_IDS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
   var universes = UNI_IDS.map(makeUniverse);
 
   function makeGrid(){ return new Uint8Array(cfg.cols * cfg.rows); }
@@ -720,7 +771,7 @@ canvas{ touch-action:none; cursor:cell; image-rendering:pixelated; }
     // combination of the chosen parents into the now-empty slots, refilling
     // the lineup.
     var active = activeUniverses();
-    if (active.length <= 3){
+    if (active.length <= BREED_THRESHOLD){
       var survivorIds = active.map(function(u){ return u.id; }).join(', ') || '(none)';
       setRunning(false);
       breedAndRefill();
@@ -1111,15 +1162,15 @@ canvas{ touch-action:none; cursor:cell; image-rendering:pixelated; }
     universes.forEach(resizeCanvasFor);
   }
 
-  // The 3 parents to breed: every currently-alive universe, plus - only if
-  // that's short of 3 (multiple universes died in the same tick, skipping
-  // past the "exactly 3 left" checkpoint) - the most-recently-died
+  // The BREED_THRESHOLD parents to breed: every currently-alive universe,
+  // plus - only if that's short of BREED_THRESHOLD (multiple universes died
+  // in the same tick, skipping past the checkpoint) - the most-recently-died
   // universe(s) from that very tick, picked in order of how many
   // generations they survived (longest-lived casualty first), until there
-  // are 3 parents or no more same-tick casualties to draw on.
+  // are BREED_THRESHOLD parents or no more same-tick casualties to draw on.
   function selectBreedingParents(){
     var active = activeUniverses();
-    if (active.length >= 3) return active;
+    if (active.length >= BREED_THRESHOLD) return active;
     var sameTickCasualties = universes.filter(function(u){
       return !isAlive(u) && u.diedAtGen === cfg.gen;
     });
@@ -1127,7 +1178,7 @@ canvas{ touch-action:none; cursor:cell; image-rendering:pixelated; }
       return (b.diedAtGen - b.bornAtGen) - (a.diedAtGen - a.bornAtGen);
     });
     var parents = active.slice();
-    for (var i = 0; i < sameTickCasualties.length && parents.length < 3; i++){
+    for (var i = 0; i < sameTickCasualties.length && parents.length < BREED_THRESHOLD; i++){
       parents.push(sameTickCasualties[i]);
     }
     return parents;
