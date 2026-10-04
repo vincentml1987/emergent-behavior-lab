@@ -44,6 +44,23 @@ for these universes' lineages and verify whether their original tiles are
 literally the same bred pattern reappearing, or merely converging toward
 very similar-looking but distinct ones.
 
+## Update: total extinction followed the convergence
+
+Very next recorded window (gen 3111-3260, see
+`total-extinction-gen3111-3260.png`): all six universes at `0,0:0`. The
+four-way identical convergence (A/B/E/F) seems to have led directly to a
+correlated death - if those four really shared content, they'd share a
+fate too - and C/D apparently followed close behind, wiping the whole
+lineup at once.
+
+This is a real test of the simultaneous-death backfill rule (added after
+the first "more complex oscillation" investigation): with zero survivors,
+the normal "3 alive -> breed" trigger has nothing to breed from, so
+recovery depends on pulling the longest-lived of whichever universes died
+in that same tick back in by their frozen original pattern. Worth
+confirming directly whether the run actually self-recovered via that path
+or needed manual intervention.
+
 ## Files
 
 - `breed-00.png` through `breed-07.png` (breed-02 missing - not captured)
