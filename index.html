@@ -1143,6 +1143,23 @@ canvas{ touch-action:none; cursor:cell; image-rendering:pixelated; }
     var parents = selectBreedingParents();
     if (parents.length < 2) return;
 
+    // A parent pulled in from a same-tick casualty (the simultaneous-death
+    // backfill case) isn't alive yet - it only contributed its frozen
+    // original pattern as breeding material. Revive it too, with that same
+    // original pattern, or a total-wipe event would permanently cap the
+    // lineup at just the children: the sacrificed parents would never come
+    // back, active count would pin at exactly 3 forever, and every future
+    // tick would re-trigger this same breeding step on an endless loop.
+    parents.forEach(function(p){
+      if (isAlive(p)) return;
+      resetWorld(p);
+      if (p.originTile) p.tiles[tileKey(0, 0)] = p.originTile.slice();
+      markBorn(p);
+      recordPopulation(p);
+      renderLog(p);
+      setUniPanelsVisible(p.id, true);
+    });
+
     var combos = [];
     for (var i = 0; i < parents.length; i++){
       for (var j = i + 1; j < parents.length; j++) combos.push([parents[i], parents[j]]);
