@@ -59,8 +59,37 @@ guaranteed to eventually cycle. In practice it does, and fast:
 
 Screenshots and notes from both runs are in `analysis/`.
 
+## Recording data to the database
+
+Screenshots work for a quick look, but get hard to compare precisely once
+you're tracking lineage across many breeding cycles. There's now a proper
+path to structured, queryable data instead:
+
+1. Click **Export data** in the page. It downloads a JSON file with the
+   full current state — every universe's live tiles, birth/death
+   generations, population history, and creation log (including breed
+   events, with each child's exact parent pair).
+2. Import it into the lab's SQLite database:
+   ```
+   python tools/import_snapshot.py --run <label> path/to/gol-export-....json
+   ```
+   `<label>` groups related exports together (e.g. `oscillation-3`) so you
+   can capture the same run at several points in time and query across all
+   of them. Each import adds a new `runs` row rather than overwriting
+   anything, so nothing is lost by exporting too often.
+3. The database lives at `data/lab.sqlite` (created on first import) with
+   tables for `runs`, `universes`, `tiles`, `creation_events` (every grid
+   creation and breed event, with parent pairs for bred ones), and
+   `population_samples` (full generation-by-generation history per tile).
+   Query it directly with Python's `sqlite3` module, or any SQLite client.
+
+This is what lets lineage questions (e.g. "does this population-71 newborn
+always trace back to the same two parent letters?") get answered by a
+query instead of by eyeballing screenshots.
+
 ## Project history
 
 Built conversationally, feature by feature, in a Claude Code session — see
 `analysis/` for the oscillation investigation that prompted turning this
-into its own repo.
+into its own repo, and `data/lab.sqlite` (once populated) for the
+structured version of that same investigation.
