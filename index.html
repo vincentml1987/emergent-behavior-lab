@@ -1,0 +1,1440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cellular Automaton — Emergent Behavior Lab</title>
+<style>
+/* layout: shared control rail above two side-by-side (stacking on narrow) universes */
+:root{
+  --bg:#f4f4f1; --panel:#ffffff; --ink:#1b1d1a; --muted:#6b7066;
+  --line:#dcded8; --subgrid:#9a9f92; --accent:#2f6e4f; --accent-dim:#cfe3d6; --danger:#a1402f;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101210; --panel:#171a16; --ink:#e9ebe4; --muted:#8d928a;
+    --line:#2a2e27; --subgrid:#4c5247; --accent:#5fd999; --accent-dim:#1f3a2c; --danger:#e07a63;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101210; --panel:#171a16; --ink:#e9ebe4; --muted:#8d928a;
+  --line:#2a2e27; --subgrid:#4c5247; --accent:#5fd999; --accent-dim:#1f3a2c; --danger:#e07a63;
+  color-scheme: dark;
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:'IBM Plex Sans', system-ui, sans-serif;
+  padding-inline:16px; padding-block:16px;
+  height:100%; display:flex; flex-direction:column; align-items:center;
+}
+html{height:100%}
+
+.app{
+  width:100%; max-width:1320px; display:flex; flex-direction:column; gap:12px;
+  flex:1; min-height:0;
+}
+
+h1{
+  font-family:'IBM Plex Mono', monospace; font-size:0.78rem; font-weight:600;
+  letter-spacing:0.14em; text-transform:uppercase; color:var(--muted);
+  margin:0;
+}
+
+.stats{
+  display:flex; gap:18px; font-family:'IBM Plex Mono', monospace; font-size:0.82rem;
+  color:var(--muted); flex-wrap:wrap;
+}
+.stats b{ color:var(--ink); font-weight:600 }
+.stats .dot{ color:var(--accent) }
+
+.panel{
+  background:var(--panel); border:1px solid var(--line); border-radius:10px;
+  padding:12px 14px; display:flex; flex-wrap:wrap; gap:14px; align-items:end;
+}
+
+.field{ display:flex; flex-direction:column; gap:4px; min-width:0 }
+.field label{
+  font-size:0.68rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted);
+}
+.field input[type="number"]{
+  width:64px; font-family:'IBM Plex Mono', monospace; font-size:0.9rem;
+  background:var(--bg); color:var(--ink); border:1px solid var(--line);
+  border-radius:6px; padding:5px 7px;
+}
+.field input[type="range"]{ width:120px }
+
+.btnrow{ display:flex; gap:8px; flex-wrap:wrap; margin-left:auto }
+
+button{
+  font-family:'IBM Plex Sans', sans-serif; font-size:0.84rem; font-weight:600;
+  border:1px solid var(--line); background:var(--bg); color:var(--ink);
+  border-radius:6px; padding:7px 13px; cursor:pointer;
+}
+button:hover{ border-color:var(--accent) }
+button:focus-visible{ outline:2px solid var(--accent); outline-offset:1px }
+button.primary{ background:var(--accent); color:#fff; border-color:var(--accent) }
+button.ghost{ color:var(--muted) }
+button.danger:hover{ border-color:var(--danger); color:var(--danger) }
+button:disabled{ opacity:0.45; cursor:default }
+
+.tabs{ display:flex; gap:6px }
+.tabbtn{
+  font-family:'IBM Plex Sans', sans-serif; font-size:0.8rem; font-weight:600;
+  border:1px solid var(--line); background:var(--panel); color:var(--muted);
+  border-radius:7px; padding:6px 14px; cursor:pointer;
+}
+.tabbtn:hover{ color:var(--ink) }
+.tabbtn.active{ color:var(--accent); border-color:var(--accent); background:var(--accent-dim) }
+
+.duo{ display:flex; gap:12px; flex-wrap:wrap }
+.uni{ flex:1 1 320px; min-width:280px; display:flex; flex-direction:column; gap:6px }
+.uni-head{
+  display:flex; justify-content:space-between; align-items:baseline;
+  font-family:'IBM Plex Mono', monospace; font-size:0.74rem; color:var(--muted);
+}
+.uni-head .uni-name{ font-size:0.72rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink) }
+.uni-head b{ color:var(--ink) }
+
+.boardwrap{
+  flex:1; min-height:220px; display:flex; align-items:center; justify-content:center;
+  background:var(--panel); border:1px solid var(--line); border-radius:10px;
+  padding:10px; overflow:auto;
+}
+canvas{ touch-action:none; cursor:cell; image-rendering:pixelated; }
+
+.graphwrap{
+  flex:1; min-height:300px; display:flex; flex-direction:column; gap:10px;
+  background:var(--panel); border:1px solid var(--line); border-radius:10px;
+  padding:10px; overflow:hidden;
+}
+.graphwrap canvas{ width:100%; height:220px; flex:none; cursor:default }
+
+.legend{
+  display:flex; flex-wrap:wrap; gap:8px 16px;
+  font-family:'IBM Plex Mono', monospace; font-size:0.74rem; color:var(--ink);
+  max-height:70px; overflow-y:auto;
+}
+.legend-item{ display:flex; align-items:center; gap:6px; white-space:nowrap }
+.legend-swatch{ width:10px; height:10px; border-radius:2px; display:inline-block; flex:none }
+
+.hint{
+  font-size:0.76rem; color:var(--muted); text-align:center;
+}
+
+.logpanel{
+  background:var(--panel); border:1px solid var(--line); border-radius:10px;
+  padding:10px 12px; max-height:160px; overflow-y:auto;
+  font-family:'IBM Plex Mono', monospace; font-size:0.72rem;
+}
+.logpanel h2{
+  margin:0 0 6px; font-size:0.66rem; letter-spacing:0.08em; text-transform:uppercase;
+  color:var(--muted); font-weight:600;
+}
+.loghint{ color:var(--muted) }
+.logrow{
+  padding:6px 0; border-top:1px solid var(--line); color:var(--ink);
+}
+.logrow:first-child{ border-top:none }
+.logrow .meta{ color:var(--muted) }
+.logrow .grid3{
+  display:inline-grid; grid-template-columns:repeat(3, 1.5em); gap:1px;
+  vertical-align:middle; margin:3px 0;
+}
+.logrow .grid3 span{
+  text-align:center; background:var(--bg); border:1px solid var(--line); border-radius:2px;
+}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+</head>
+<body>
+<div class="app">
+  <h1>Conway's Game of Life — Emergent Behavior Lab</h1>
+
+  <div class="panel">
+    <div class="field">
+      <label for="cols">Width</label>
+      <input id="cols" type="number" min="4" max="220" value="48">
+    </div>
+    <div class="field">
+      <label for="rows">Height</label>
+      <input id="rows" type="number" min="4" max="220" value="32">
+    </div>
+    <div class="field">
+      <label for="speed">Speed (gen/s)</label>
+      <input id="speed" type="range" min="1" max="30" value="8">
+    </div>
+    <div class="field">
+      <label for="autoPause" style="flex-direction:row;align-items:center;gap:6px;display:flex;text-transform:none;letter-spacing:0;font-size:0.8rem;color:var(--ink)">
+        <input id="autoPause" type="checkbox" style="width:auto" checked> Auto-pause on growth
+      </label>
+    </div>
+    <div class="field">
+      <label for="genLimit">Grid lifespan (gens, 0=∞)</label>
+      <input id="genLimit" type="number" min="0" max="9999" value="0">
+    </div>
+    <div class="field">
+      <label for="stallLimit">Stall window (gens, 0=off)</label>
+      <input id="stallLimit" type="number" min="0" max="9999" value="0">
+    </div>
+    <div class="field">
+      <label for="stallTolerance">Stall slope tolerance (±pop/gen)</label>
+      <input id="stallTolerance" type="number" min="0" step="0.1" value="0.5">
+    </div>
+    <div class="field">
+      <label for="minRepro">Min. reproduction size</label>
+      <input id="minRepro" type="number" min="0" max="9999" value="1">
+    </div>
+    <div class="btnrow">
+      <button id="resizeBtn" class="ghost">Apply size</button>
+      <button id="randomBtn">Random (reseed all)</button>
+      <button id="clearBtn">Clear</button>
+      <button id="stepBtn">Step</button>
+      <button id="runBtn" class="primary">Run</button>
+      <button id="resetBtn" class="danger ghost">Reset</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <span>Generation <b id="genCount">0</b></span>
+    <span id="statusTag"><span class="dot">●</span> <b id="statusText">Paused</b></span>
+  </div>
+
+  <div class="tabs">
+    <button id="tabGridBtn" class="tabbtn active" type="button">Grid</button>
+    <button id="tabGraphBtn" class="tabbtn" type="button">Population</button>
+  </div>
+
+  <div class="duo" id="gridView">
+    <div class="uni" data-uni="A">
+      <div class="uni-head"><span class="uni-name">Universe A</span><span>Live <b id="popA">0</b> · Grids <b id="gridsA">0</b></span></div>
+      <div class="boardwrap"><canvas id="boardA"></canvas></div>
+    </div>
+    <div class="uni" data-uni="B">
+      <div class="uni-head"><span class="uni-name">Universe B</span><span>Live <b id="popB">0</b> · Grids <b id="gridsB">0</b></span></div>
+      <div class="boardwrap"><canvas id="boardB"></canvas></div>
+    </div>
+    <div class="uni" data-uni="C">
+      <div class="uni-head"><span class="uni-name">Universe C</span><span>Live <b id="popC">0</b> · Grids <b id="gridsC">0</b></span></div>
+      <div class="boardwrap"><canvas id="boardC"></canvas></div>
+    </div>
+    <div class="uni" data-uni="D">
+      <div class="uni-head"><span class="uni-name">Universe D</span><span>Live <b id="popD">0</b> · Grids <b id="gridsD">0</b></span></div>
+      <div class="boardwrap"><canvas id="boardD"></canvas></div>
+    </div>
+    <div class="uni" data-uni="E">
+      <div class="uni-head"><span class="uni-name">Universe E</span><span>Live <b id="popE">0</b> · Grids <b id="gridsE">0</b></span></div>
+      <div class="boardwrap"><canvas id="boardE"></canvas></div>
+    </div>
+    <div class="uni" data-uni="F">
+      <div class="uni-head"><span class="uni-name">Universe F</span><span>Live <b id="popF">0</b> · Grids <b id="gridsF">0</b></span></div>
+      <div class="boardwrap"><canvas id="boardF"></canvas></div>
+    </div>
+  </div>
+
+  <div class="duo" id="graphView" hidden>
+    <div class="uni" data-uni="A">
+      <div class="uni-head"><span class="uni-name">Universe A</span></div>
+      <div class="graphwrap"><canvas id="graphCanvasA"></canvas><div class="legend" id="graphLegendA"><div class="loghint">No grids yet.</div></div></div>
+    </div>
+    <div class="uni" data-uni="B">
+      <div class="uni-head"><span class="uni-name">Universe B</span></div>
+      <div class="graphwrap"><canvas id="graphCanvasB"></canvas><div class="legend" id="graphLegendB"><div class="loghint">No grids yet.</div></div></div>
+    </div>
+    <div class="uni" data-uni="C">
+      <div class="uni-head"><span class="uni-name">Universe C</span></div>
+      <div class="graphwrap"><canvas id="graphCanvasC"></canvas><div class="legend" id="graphLegendC"><div class="loghint">No grids yet.</div></div></div>
+    </div>
+    <div class="uni" data-uni="D">
+      <div class="uni-head"><span class="uni-name">Universe D</span></div>
+      <div class="graphwrap"><canvas id="graphCanvasD"></canvas><div class="legend" id="graphLegendD"><div class="loghint">No grids yet.</div></div></div>
+    </div>
+    <div class="uni" data-uni="E">
+      <div class="uni-head"><span class="uni-name">Universe E</span></div>
+      <div class="graphwrap"><canvas id="graphCanvasE"></canvas><div class="legend" id="graphLegendE"><div class="loghint">No grids yet.</div></div></div>
+    </div>
+    <div class="uni" data-uni="F">
+      <div class="uni-head"><span class="uni-name">Universe F</span></div>
+      <div class="graphwrap"><canvas id="graphCanvasF"></canvas><div class="legend" id="graphLegendF"><div class="loghint">No grids yet.</div></div></div>
+    </div>
+  </div>
+
+  <div class="hint">Six worlds start out running independently in lockstep (shared generation count, shared rules above). "Random" rolls a fresh independent pattern into every universe. Whenever a universe's grids all die out, it drops out of the lineup (its panels hide). Once only three are left standing, the run auto-pauses and "breeds" every pairwise combination of those three survivors — XOR of each parent's ORIGINAL starting pattern (frozen the moment it was born, never its current evolved state) — back into the empty slots, refilling the lineup to six so you can Run again. If two or more die in the very same tick and that drops the count below three, the longest-lived of that tick's casualties are pulled back in (by their own original pattern) to round the parent pool out to three. Click or drag extra cells into any active board's center third to perturb it. A tick that would spill past an edge creates a new grid there (seeded from the overflowing edge-third, if it meets the minimum reproduction size — otherwise those cells warp to the opposite edge instead). Grid lifespan and stall window (trend-line slope near zero) remove a grid after that many generations, whichever comes first.</div>
+
+  <div class="duo">
+    <div class="logpanel" data-uni="A">
+      <h2>Grid creation log — A</h2>
+      <div id="creationLogA"><div class="loghint">No grids created yet.</div></div>
+    </div>
+    <div class="logpanel" data-uni="B">
+      <h2>Grid creation log — B</h2>
+      <div id="creationLogB"><div class="loghint">No grids created yet.</div></div>
+    </div>
+    <div class="logpanel" data-uni="C">
+      <h2>Grid creation log — C</h2>
+      <div id="creationLogC"><div class="loghint">No grids created yet.</div></div>
+    </div>
+    <div class="logpanel" data-uni="D">
+      <h2>Grid creation log — D</h2>
+      <div id="creationLogD"><div class="loghint">No grids created yet.</div></div>
+    </div>
+    <div class="logpanel" data-uni="E">
+      <h2>Grid creation log — E</h2>
+      <div id="creationLogE"><div class="loghint">No grids created yet.</div></div>
+    </div>
+    <div class="logpanel" data-uni="F">
+      <h2>Grid creation log — F</h2>
+      <div id="creationLogF"><div class="loghint">No grids created yet.</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var DIRS = [
+    { name: 'top',    dx: 0,  dy: -1 },
+    { name: 'bottom', dx: 0,  dy: 1 },
+    { name: 'left',   dx: -1, dy: 0 },
+    { name: 'right',  dx: 1,  dy: 0 }
+  ];
+
+  // Shared simulation rules/config, identical for both universes.
+  var cfg = {
+    cols: 48,
+    rows: 32,
+    gen: 0,
+    running: false,
+    timer: null,
+    autoPause: true,
+    genLimit: 0,
+    stallLimit: 0,
+    stallTolerance: 0.5,
+    minRepro: 1,
+    speed: 8,
+    activeTab: 'grid'
+  };
+
+  function makeUniverse(id){
+    var canvas = document.getElementById('board' + id);
+    var graphCanvas = document.getElementById('graphCanvas' + id);
+    return {
+      id: id,
+      canvas: canvas,
+      ctx: canvas.getContext('2d'),
+      graphCanvas: graphCanvas,
+      gctx: graphCanvas.getContext('2d'),
+      tiles: {},
+      tileBirth: {},
+      pendingExpansion: null,
+      creationLog: [],
+      popHistory: {},
+      cellPx: 14,
+      margin: 1,
+      view: { minTx: 0, maxTx: 0, minTy: 0, maxTy: 0 },
+      paintValue: null,
+      originTile: null,   // frozen snapshot of this universe's (0,0) tile the moment it was born - bred from this, never its current/live state
+      bornAtGen: 0,       // cfg.gen when this universe's current life began (reseeded, reset, or bred into existence)
+      diedAtGen: null      // cfg.gen when it went extinct, or null while alive - lets simultaneous deaths be compared by lifespan
+    };
+  }
+
+  var UNI_IDS = ['A', 'B', 'C', 'D', 'E', 'F'];
+  var universes = UNI_IDS.map(makeUniverse);
+
+  function makeGrid(){ return new Uint8Array(cfg.cols * cfg.rows); }
+  function idxLocal(x, y){ return y * cfg.cols + x; }
+  function tileKey(tx, ty){ return tx + ',' + ty; }
+  function getTile(uni, tx, ty){ return uni.tiles[tileKey(tx, ty)] || null; }
+
+  // Splits n cells into 3 groups as evenly as possible; when it doesn't divide
+  // evenly, the extra cell(s) go to the middle (remainder 1) or to both ends
+  // (remainder 2), so the split stays symmetric around the center.
+  function groupSplit(n){
+    var base = Math.floor(n / 3), r = n % 3;
+    if (r === 0) return [base, base, base];
+    if (r === 1) return [base, base + 1, base];
+    return [base + 1, base, base + 1];
+  }
+
+  function subdivisionLines(n){
+    var g = groupSplit(n);
+    return [g[0], g[0] + g[1]];
+  }
+
+  // Bounds (exclusive on x1/y1) of the center cell of a tile's 3x3 subdivision -
+  // the only region allowed to hold starting cells, in every tile.
+  function centerBounds(){
+    var gx = groupSplit(cfg.cols), gy = groupSplit(cfg.rows);
+    return { x0: gx[0], x1: gx[0] + gx[1], y0: gy[0], y1: gy[0] + gy[1] };
+  }
+
+  function inCenter(x, y){
+    var b = centerBounds();
+    return x >= b.x0 && x < b.x1 && y >= b.y0 && y < b.y1;
+  }
+
+  // Live-cell counts for a tile's nine 3x3 sections, left-to-right then
+  // top-to-bottom, plus the tile's total population as a tenth value.
+  function countSections(tile){
+    var gx = groupSplit(cfg.cols), gy = groupSplit(cfg.rows);
+    var colBounds = [[0, gx[0]], [gx[0], gx[0] + gx[1]], [gx[0] + gx[1], cfg.cols]];
+    var rowBounds = [[0, gy[0]], [gy[0], gy[0] + gy[1]], [gy[0] + gy[1], cfg.rows]];
+    var sections = [];
+    for (var r = 0; r < 3; r++){
+      for (var c = 0; c < 3; c++){
+        var sum = 0;
+        for (var y = rowBounds[r][0]; y < rowBounds[r][1]; y++){
+          for (var x = colBounds[c][0]; x < colBounds[c][1]; x++){
+            sum += tile[idxLocal(x, y)];
+          }
+        }
+        sections.push(sum);
+      }
+    }
+    var total = sections.reduce(function(a, b){ return a + b; }, 0);
+    return { sections: sections, total: total };
+  }
+
+  function tilePopulation(cells){
+    var n = 0;
+    for (var i = 0; i < cells.length; i++) n += cells[i];
+    return n;
+  }
+
+  function countLive(uni){
+    var n = 0;
+    Object.keys(uni.tiles).forEach(function(k){ n += tilePopulation(uni.tiles[k]); });
+    return n;
+  }
+
+  // Appends a {gen, pop} point for every currently existing tile of this
+  // universe, at cfg.gen. History for a pruned tile is kept, so its line on
+  // the Population graph just stops instead of vanishing.
+  function recordPopulation(uni){
+    Object.keys(uni.tiles).forEach(function(k){
+      if (!uni.popHistory[k]) uni.popHistory[k] = [];
+      uni.popHistory[k].push({ gen: cfg.gen, pop: tilePopulation(uni.tiles[k]) });
+    });
+  }
+
+  // Neighbor count for cell (x,y) of tile (tx,ty) in this universe. A
+  // neighbor inside the same tile is read directly; one crossing into a real
+  // neighbor tile is read from there. One crossing into a MISSING neighbor
+  // tile warps instead, reading from this same tile's opposite edge - this
+  // is what happens whenever that direction's reproduction count didn't
+  // clear the minimum (see computeExpansionNeeds), since a direction that
+  // did clear it was already materialized before this runs. A diagonal gap
+  // (both axes crossing into a missing tile at once) always just reads dead.
+  function neighborCountForTile(uni, tx, ty, cells, x, y){
+    var n = 0;
+    for (var dy = -1; dy <= 1; dy++){
+      for (var dx = -1; dx <= 1; dx++){
+        if (dx === 0 && dy === 0) continue;
+        var nx = x + dx, ny = y + dy;
+        var xOut = nx < 0 ? -1 : (nx >= cfg.cols ? 1 : 0);
+        var yOut = ny < 0 ? -1 : (ny >= cfg.rows ? 1 : 0);
+        if (xOut === 0 && yOut === 0){
+          n += cells[idxLocal(nx, ny)];
+        } else if (xOut !== 0 && yOut !== 0){
+          continue; // diagonal gap: always dead
+        } else if (xOut !== 0){
+          var wrappedX = (nx + cfg.cols) % cfg.cols;
+          var tH = getTile(uni, tx + xOut, ty);
+          n += tH ? tH[idxLocal(wrappedX, ny)] : cells[idxLocal(wrappedX, ny)];
+        } else {
+          var wrappedY = (ny + cfg.rows) % cfg.rows;
+          var tV = getTile(uni, tx, ty + yOut);
+          n += tV ? tV[idxLocal(nx, wrappedY)] : cells[idxLocal(nx, wrappedY)];
+        }
+      }
+    }
+    return n;
+  }
+
+  function directionSectionIndex(direction){
+    if (direction === 'top') return 1;
+    if (direction === 'bottom') return 7;
+    if (direction === 'left') return 3;
+    return 5; // right
+  }
+
+  // For each existing tile of this universe, checks whether it has a live
+  // cell on a border that faces a not-yet-created neighbor tile AND whether
+  // what would be copied into that new tile's center (the matching
+  // edge-third's current population) meets the minimum reproduction size.
+  // Only directions that clear both become a real expansion need; falling
+  // short of the minimum isn't an error - those cells simply warp around
+  // this tile's own edge instead (see neighborCountForTile), no pause,
+  // no new grid.
+  function computeExpansionNeeds(uni){
+    var needs = {};
+    Object.keys(uni.tiles).forEach(function(k){
+      var p = k.split(','), tx = +p[0], ty = +p[1];
+      var cells = uni.tiles[k];
+      var counted = countSections(cells);
+      DIRS.forEach(function(d){
+        var ntx = tx + d.dx, nty = ty + d.dy, nk = tileKey(ntx, nty);
+        if (uni.tiles[nk] || needs[nk]) return;
+        var hasAlive = false;
+        if (d.name === 'left'){
+          for (var y1 = 0; y1 < cfg.rows; y1++){ if (cells[y1 * cfg.cols]){ hasAlive = true; break; } }
+        } else if (d.name === 'right'){
+          var xl = cfg.cols - 1;
+          for (var y2 = 0; y2 < cfg.rows; y2++){ if (cells[y2 * cfg.cols + xl]){ hasAlive = true; break; } }
+        } else if (d.name === 'top'){
+          for (var x1 = 0; x1 < cfg.cols; x1++){ if (cells[x1]){ hasAlive = true; break; } }
+        } else {
+          var yl = cfg.rows - 1;
+          for (var x2 = 0; x2 < cfg.cols; x2++){ if (cells[yl * cfg.cols + x2]){ hasAlive = true; break; } }
+        }
+        if (!hasAlive) return;
+        if (counted.sections[directionSectionIndex(d.name)] < cfg.minRepro) return;
+        needs[nk] = { tx: ntx, ty: nty, sourceTx: tx, sourceTy: ty, direction: d.name };
+      });
+    });
+    return Object.keys(needs).map(function(k){ return needs[k]; });
+  }
+
+  // A new tile's center becomes a copy of the source tile's matching edge
+  // subdivision cell (its top/bottom/left/right third) - the same rule that
+  // restricts hand-placed starting cells to a tile's center applies to how a
+  // freshly created tile gets seeded too.
+  function seedForNeed(uni, need){
+    var source = getTile(uni, need.sourceTx, need.sourceTy);
+    var gx = groupSplit(cfg.cols), gy = groupSplit(cfg.rows);
+    var cb = centerBounds();
+    var src;
+    if (need.direction === 'right') src = { x0: gx[0] + gx[1], x1: cfg.cols, y0: gy[0], y1: gy[0] + gy[1] };
+    else if (need.direction === 'left') src = { x0: 0, x1: gx[0], y0: gy[0], y1: gy[0] + gy[1] };
+    else if (need.direction === 'top') src = { x0: gx[0], x1: gx[0] + gx[1], y0: 0, y1: gy[0] };
+    else src = { x0: gx[0], x1: gx[0] + gx[1], y0: gy[0] + gy[1], y1: cfg.rows };
+
+    var tile = makeGrid();
+    var w = Math.min(src.x1 - src.x0, cb.x1 - cb.x0);
+    var h = Math.min(src.y1 - src.y0, cb.y1 - cb.y0);
+    for (var yy = 0; yy < h; yy++){
+      for (var xx = 0; xx < w; xx++){
+        tile[(cb.y0 + yy) * cfg.cols + (cb.x0 + xx)] = source[(src.y0 + yy) * cfg.cols + (src.x0 + xx)];
+      }
+    }
+    return tile;
+  }
+
+  function refreshStatus(){
+    var anyPending = universes.some(function(u){ return u.pendingExpansion && u.pendingExpansion.length; });
+    var text;
+    if (anyPending){
+      var dirs = [];
+      universes.forEach(function(u){
+        if (u.pendingExpansion && u.pendingExpansion.length){
+          dirs = dirs.concat(u.pendingExpansion.map(function(n){ return u.id + ':' + n.direction; }));
+        }
+      });
+      var uniq = dirs.filter(function(v, i){ return dirs.indexOf(v) === i; });
+      text = 'Stopped — will grow ' + uniq.join(' + ') + ' next';
+    } else {
+      text = cfg.running ? 'Running' : 'Paused';
+    }
+    document.getElementById('genCount').textContent = cfg.gen;
+    document.getElementById('statusText').textContent = text;
+    document.querySelector('#statusTag .dot').style.color = (anyPending || cfg.running) ? 'var(--accent)' : 'var(--muted)';
+    universes.forEach(updateUniStats);
+  }
+
+  function updateUniStats(u){
+    var popEl = document.getElementById('pop' + u.id);
+    var gridsEl = document.getElementById('grids' + u.id);
+    if (popEl) popEl.textContent = countLive(u);
+    if (gridsEl) gridsEl.textContent = Object.keys(u.tiles).length;
+  }
+
+  function renderLog(uni){
+    var el = document.getElementById('creationLog' + uni.id);
+    if (!el) return;
+    if (!uni.creationLog.length){
+      el.innerHTML = '<div class="loghint">No grids created yet.</div>';
+      return;
+    }
+    var rows = uni.creationLog.slice().reverse().map(function(r){
+      var cells = r.sections.map(function(n){ return '<span>' + n + '</span>'; }).join('');
+      return '<div class="logrow">' +
+        '<div class="meta"><b>' + r.newTile + '</b> ← ' + r.sourceTile + ' (' + r.direction + '), gen ' + r.gen + '</div>' +
+        '<div class="grid3">' + cells + '</div>' +
+        '<div class="meta">total: <b>' + r.total + '</b></div>' +
+      '</div>';
+    });
+    el.innerHTML = rows.join('');
+  }
+
+  function resetWorld(uni){
+    uni.tiles = {};
+    uni.tiles[tileKey(0, 0)] = makeGrid();
+    uni.tileBirth = {};
+    uni.tileBirth[tileKey(0, 0)] = 0;
+    uni.pendingExpansion = null;
+    uni.creationLog = [];
+    uni.popHistory = {};
+    renderLog(uni);
+  }
+
+  // Creates every tile in uni.pendingExpansion for real: logs the parent's
+  // section counts, seeds the new tile's center, and records its birth
+  // generation (for the lifespan limit) plus its first population point.
+  function materializePendingExpansion(uni){
+    uni.pendingExpansion.forEach(function(need){
+      var k = tileKey(need.tx, need.ty);
+      if (uni.tiles[k]) return;
+      var source = getTile(uni, need.sourceTx, need.sourceTy);
+      var counted = countSections(source);
+      uni.creationLog.push({
+        gen: cfg.gen,
+        newTile: tileKey(need.tx, need.ty),
+        sourceTile: tileKey(need.sourceTx, need.sourceTy),
+        direction: need.direction,
+        sections: counted.sections,
+        total: counted.total
+      });
+      uni.tiles[k] = seedForNeed(uni, need);
+      uni.tileBirth[k] = cfg.gen;
+      if (!uni.popHistory[k]) uni.popHistory[k] = [];
+      uni.popHistory[k].push({ gen: cfg.gen, pop: tilePopulation(uni.tiles[k]) });
+    });
+    uni.pendingExpansion = null;
+    renderLog(uni);
+  }
+
+  // Least-squares slope of y over evenly-spaced points (x = 0..n-1), i.e.
+  // population change per generation across the window.
+  function linearSlope(ys){
+    var n = ys.length;
+    if (n < 2) return 0;
+    var sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+    for (var i = 0; i < n; i++){
+      sumX += i; sumY += ys[i]; sumXY += i * ys[i]; sumXX += i * i;
+    }
+    var denom = n * sumXX - sumX * sumX;
+    if (denom === 0) return 0;
+    return (n * sumXY - sumX * sumY) / denom;
+  }
+
+  // True once the trend line through a tile's last `window` recorded
+  // populations is within `tolerance` of flat (|slope| <= tolerance). This
+  // also catches an oscillator cycling through a few different population
+  // values with no net trend, not just a true still life.
+  function isStalled(uni, k, window, tolerance){
+    var hist = uni.popHistory[k];
+    if (!hist || hist.length < window) return false;
+    var pts = hist.slice(hist.length - window);
+    var slope = linearSlope(pts.map(function(p){ return p.pop; }));
+    return Math.abs(slope) <= tolerance;
+  }
+
+  function pruneExpiredTiles(uni){
+    if (!cfg.genLimit && !cfg.stallLimit) return false;
+    var removed = false;
+    Object.keys(uni.tiles).forEach(function(k){
+      var age = cfg.gen - (uni.tileBirth[k] || 0);
+      var byAge = cfg.genLimit > 0 && age >= cfg.genLimit;
+      var byStall = cfg.stallLimit > 0 && isStalled(uni, k, cfg.stallLimit, cfg.stallTolerance);
+      if (byAge || byStall){
+        delete uni.tiles[k];
+        delete uni.tileBirth[k];
+        removed = true;
+      }
+    });
+    return removed;
+  }
+
+  function advanceGeneration(uni){
+    var newTiles = {};
+    Object.keys(uni.tiles).forEach(function(k){
+      var p = k.split(','), tx = +p[0], ty = +p[1];
+      var cells = uni.tiles[k];
+      var next = makeGrid();
+      for (var yy = 0; yy < cfg.rows; yy++){
+        for (var xx = 0; xx < cfg.cols; xx++){
+          var alive = cells[idxLocal(xx, yy)];
+          var n = neighborCountForTile(uni, tx, ty, cells, xx, yy);
+          next[idxLocal(xx, yy)] = alive ? (n === 2 || n === 3 ? 1 : 0) : (n === 3 ? 1 : 0);
+        }
+      }
+      newTiles[k] = next;
+    });
+    uni.tiles = newTiles;
+  }
+
+  // Drives both universes forward one generation in lockstep. If either
+  // universe needs a new grid and auto-pause is on, the WHOLE tick pauses
+  // (neither universe advances) so their generation counts never drift
+  // apart; Run/Step again materializes whatever's pending and both step.
+  function tick(){
+    var alreadyPending = universes.filter(function(u){ return u.pendingExpansion && u.pendingExpansion.length; });
+    if (alreadyPending.length){
+      alreadyPending.forEach(function(u){ materializePendingExpansion(u); });
+    } else if (cfg.autoPause){
+      var newlyNeeded = [];
+      universes.forEach(function(u){
+        var needs = computeExpansionNeeds(u);
+        if (needs.length){ u.pendingExpansion = needs; newlyNeeded.push(u); }
+      });
+      if (newlyNeeded.length){
+        setRunning(false);
+        refreshStatus();
+        newlyNeeded.forEach(function(u){ resizeCanvasFor(u); });
+        return;
+      }
+    } else {
+      universes.forEach(function(u){
+        var needs = computeExpansionNeeds(u);
+        if (needs.length){ u.pendingExpansion = needs; materializePendingExpansion(u); }
+      });
+    }
+
+    var wasAlive = {};
+    universes.forEach(function(u){ wasAlive[u.id] = isAlive(u); });
+
+    universes.forEach(function(u){ advanceGeneration(u); });
+    cfg.gen++;
+    universes.forEach(function(u){ recordPopulation(u); });
+    var anyPruned = false;
+    universes.forEach(function(u){ if (pruneExpiredTiles(u)) anyPruned = true; });
+    // Stamp the generation anything died at - universes that die in the same
+    // tick (hence here, together) end up with the same diedAtGen, which is
+    // exactly how selectBreedingParents() recognizes a simultaneous death.
+    universes.forEach(function(u){
+      if (wasAlive[u.id] && !isAlive(u)) u.diedAtGen = cfg.gen;
+    });
+    universes.forEach(function(u){ setUniPanelsVisible(u.id, isAlive(u)); });
+    refreshStatus();
+    if (cfg.activeTab === 'graph') universes.forEach(renderGraph);
+    universes.forEach(function(u){ if (anyPruned) resizeCanvasFor(u); else renderBoard(u); });
+
+    // Culled down to a handful of survivors: pause and breed every pairwise
+    // combination of the chosen parents into the now-empty slots, refilling
+    // the lineup.
+    var active = activeUniverses();
+    if (active.length <= 3){
+      var survivorIds = active.map(function(u){ return u.id; }).join(', ') || '(none)';
+      setRunning(false);
+      breedAndRefill();
+      var statusEl = document.getElementById('statusText');
+      if (statusEl) statusEl.textContent = 'Paused — bred survivors ' + survivorIds;
+    }
+  }
+
+  function computeViewBounds(uni){
+    var minTx = 0, maxTx = 0, minTy = 0, maxTy = 0, first = true;
+    Object.keys(uni.tiles).forEach(function(k){
+      var p = k.split(','), tx = +p[0], ty = +p[1];
+      if (first){ minTx = maxTx = tx; minTy = maxTy = ty; first = false; }
+      else { minTx = Math.min(minTx, tx); maxTx = Math.max(maxTx, tx); minTy = Math.min(minTy, ty); maxTy = Math.max(maxTy, ty); }
+    });
+    if (uni.pendingExpansion){
+      uni.pendingExpansion.forEach(function(nd){
+        if (first){ minTx = maxTx = nd.tx; minTy = maxTy = nd.ty; first = false; }
+        else { minTx = Math.min(minTx, nd.tx); maxTx = Math.max(maxTx, nd.tx); minTy = Math.min(minTy, nd.ty); maxTy = Math.max(maxTy, nd.ty); }
+      });
+    }
+    return { minTx: minTx, maxTx: maxTx, minTy: minTy, maxTy: maxTy };
+  }
+
+  function resizeCanvasFor(uni){
+    uni.view = computeViewBounds(uni);
+    var tilesW = uni.view.maxTx - uni.view.minTx + 1;
+    var tilesH = uni.view.maxTy - uni.view.minTy + 1;
+    var marginCells = 1;
+    var totalCols = tilesW * cfg.cols + marginCells * 2;
+    var totalRows = tilesH * cfg.rows + marginCells * 2;
+    var wrapEl = uni.canvas.parentElement;
+    var availW = wrapEl.clientWidth - 20;
+    var availH = wrapEl.clientHeight - 20;
+    var px = Math.floor(Math.min(availW / totalCols, availH / totalRows));
+    px = Math.max(2, Math.min(22, px));
+    uni.cellPx = px;
+    uni.margin = marginCells;
+    var dpr = window.devicePixelRatio || 1;
+    var cw = totalCols * px, ch = totalRows * px;
+    uni.canvas.width = cw * dpr;
+    uni.canvas.height = ch * dpr;
+    uni.canvas.style.width = cw + 'px';
+    uni.canvas.style.height = ch + 'px';
+    uni.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    renderBoard(uni);
+  }
+
+  function isDarkMode(){
+    var attr = document.documentElement.getAttribute('data-theme');
+    if (attr === 'dark') return true;
+    if (attr === 'light') return false;
+    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  }
+
+  // Deterministic, well-spread color per tile, via the golden-angle hue
+  // sequence so consecutively-created grids never land on similar hues.
+  function tileColor(index){
+    var hue = (index * 137.508) % 360;
+    var light = isDarkMode() ? 64 : 42;
+    return 'hsl(' + hue.toFixed(1) + ', 58%, ' + light + '%)';
+  }
+
+  function resizeGraphCanvasFor(uni){
+    var wrap = uni.graphCanvas.parentElement;
+    var cssWidth = Math.max(100, wrap.clientWidth - 20);
+    var cssHeight = uni.graphCanvas.clientHeight || 220;
+    var dpr = window.devicePixelRatio || 1;
+    uni.graphCanvas.width = cssWidth * dpr;
+    uni.graphCanvas.height = cssHeight * dpr;
+    uni.graphCanvas.style.width = cssWidth + 'px';
+    uni.gctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    renderGraph(uni);
+  }
+
+  // A scrolling line chart of this universe's grids' populations over time,
+  // one line per tile (by creation order, via tileColor), x-axis is
+  // generation, with a fixed-width rolling window so it keeps moving as the
+  // run goes on instead of squeezing the whole history into the same space.
+  function renderGraph(uni){
+    var gctx = uni.gctx, graphCanvas = uni.graphCanvas;
+    var w = graphCanvas.clientWidth, h = graphCanvas.clientHeight;
+    if (!w || !h) return;
+    var panel = cssVar('--panel') || '#171a16';
+    var line = cssVar('--line') || '#2a2e27';
+    var muted = cssVar('--muted') || '#8d928a';
+
+    gctx.clearRect(0, 0, w, h);
+    gctx.fillStyle = panel;
+    gctx.fillRect(0, 0, w, h);
+
+    var keys = Object.keys(uni.popHistory);
+    var padL = 36, padR = 10, padT = 10, padB = 20;
+    var plotW = Math.max(10, w - padL - padR), plotH = Math.max(10, h - padT - padB);
+
+    var windowSize = 150;
+    var spanEnd = Math.max(cfg.gen, 20);
+    var spanStart = Math.max(0, spanEnd - windowSize + 1);
+
+    var maxPop = 1;
+    var series = keys.map(function(k, i){
+      var pts = uni.popHistory[k].filter(function(p){ return p.gen >= spanStart; });
+      pts.forEach(function(p){ if (p.pop > maxPop) maxPop = p.pop; });
+      return { key: k, pts: pts, color: tileColor(i) };
+    });
+    maxPop = Math.ceil(maxPop * 1.15) || 1;
+
+    function xFor(gen){ return padL + (gen - spanStart) / ((spanEnd - spanStart) || 1) * plotW; }
+    function yFor(pop){ return padT + plotH - (pop / maxPop) * plotH; }
+
+    gctx.strokeStyle = line;
+    gctx.lineWidth = 1;
+    gctx.font = '10px "IBM Plex Mono", monospace';
+    gctx.fillStyle = muted;
+    gctx.textAlign = 'left';
+    var ySteps = 4;
+    for (var s = 0; s <= ySteps; s++){
+      var val = Math.round(maxPop * s / ySteps);
+      var yy = yFor(val);
+      gctx.beginPath();
+      gctx.moveTo(padL, yy + 0.5);
+      gctx.lineTo(w - padR, yy + 0.5);
+      gctx.stroke();
+      gctx.fillText(String(val), 2, yy + 3);
+    }
+    gctx.fillText('gen ' + spanStart, padL, h - 4);
+    gctx.textAlign = 'right';
+    gctx.fillText('gen ' + spanEnd, w - padR, h - 4);
+    gctx.textAlign = 'left';
+
+    series.forEach(function(s){
+      if (!s.pts.length) return;
+      gctx.strokeStyle = s.color;
+      gctx.lineWidth = 1.6;
+      gctx.beginPath();
+      s.pts.forEach(function(p, idx){
+        var x = xFor(p.gen), y = yFor(p.pop);
+        if (idx === 0) gctx.moveTo(x, y); else gctx.lineTo(x, y);
+      });
+      gctx.stroke();
+
+      var last = s.pts[s.pts.length - 1];
+      var alive = !!uni.tiles[s.key];
+      var ex = xFor(last.gen), ey = yFor(last.pop);
+      gctx.beginPath();
+      gctx.arc(ex, ey, 2.6, 0, Math.PI * 2);
+      if (alive){ gctx.fillStyle = s.color; gctx.fill(); }
+      else { gctx.strokeStyle = s.color; gctx.lineWidth = 1.2; gctx.stroke(); }
+    });
+
+    renderGraphLegend(uni, series);
+  }
+
+  function renderGraphLegend(uni, series){
+    var el = document.getElementById('graphLegend' + uni.id);
+    if (!el) return;
+    if (!series.length){
+      el.innerHTML = '<div class="loghint">No grids yet.</div>';
+      return;
+    }
+    var sorted = series.slice().sort(function(a, b){
+      var pa = a.pts.length ? a.pts[a.pts.length - 1].pop : 0;
+      var pb = b.pts.length ? b.pts[b.pts.length - 1].pop : 0;
+      return pb - pa;
+    });
+    el.innerHTML = sorted.map(function(s){
+      var last = s.pts.length ? s.pts[s.pts.length - 1] : null;
+      var alive = !!uni.tiles[s.key];
+      return '<div class="legend-item"><span class="legend-swatch" style="background:' + s.color +
+        (alive ? '' : ';opacity:.4') + '"></span><b>' + s.key + '</b>' + (alive ? '' : ' (gone)') +
+        ': ' + (last ? last.pop : 0) + '</div>';
+    }).join('');
+  }
+
+  function showTab(tab){
+    cfg.activeTab = tab;
+    document.getElementById('gridView').hidden = tab !== 'grid';
+    document.getElementById('graphView').hidden = tab !== 'graph';
+    document.getElementById('tabGridBtn').classList.toggle('active', tab === 'grid');
+    document.getElementById('tabGraphBtn').classList.toggle('active', tab === 'graph');
+    if (tab === 'graph') universes.forEach(resizeGraphCanvasFor);
+  }
+
+  function cssVar(name){
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  function drawTileBase(ctx, ox, oy, px, panelColor, mutedColor){
+    var w = cfg.cols * px, h = cfg.rows * px;
+    var cb = centerBounds();
+    ctx.fillStyle = mutedColor;
+    ctx.globalAlpha = 0.08;
+    ctx.fillRect(ox, oy, w, h);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = panelColor;
+    ctx.fillRect(ox + cb.x0 * px, oy + cb.y0 * px, (cb.x1 - cb.x0) * px, (cb.y1 - cb.y0) * px);
+  }
+
+  function drawTileCells(ctx, ox, oy, px, cells, accentColor){
+    ctx.fillStyle = accentColor;
+    for (var y = 0; y < cfg.rows; y++){
+      for (var x = 0; x < cfg.cols; x++){
+        if (cells[idxLocal(x, y)]) ctx.fillRect(ox + x * px, oy + y * px, px - 1, px - 1);
+      }
+    }
+  }
+
+  function drawTileGrid(ctx, ox, oy, px, lineColor){
+    if (px < 6) return;
+    var w = cfg.cols * px, h = cfg.rows * px;
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (var gx = 0; gx <= cfg.cols; gx++){ ctx.moveTo(ox + gx * px + 0.5, oy); ctx.lineTo(ox + gx * px + 0.5, oy + h); }
+    for (var gy = 0; gy <= cfg.rows; gy++){ ctx.moveTo(ox, oy + gy * px + 0.5); ctx.lineTo(ox + w, oy + gy * px + 0.5); }
+    ctx.stroke();
+  }
+
+  function drawTileSubdivision(ctx, ox, oy, px, subColor){
+    var w = cfg.cols * px, h = cfg.rows * px;
+    var vLines = subdivisionLines(cfg.cols), hLines = subdivisionLines(cfg.rows);
+    ctx.strokeStyle = subColor;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    vLines.forEach(function(gx){ ctx.moveTo(ox + gx * px, oy); ctx.lineTo(ox + gx * px, oy + h); });
+    hLines.forEach(function(gy){ ctx.moveTo(ox, oy + gy * px); ctx.lineTo(ox + w, oy + gy * px); });
+    ctx.stroke();
+  }
+
+  function renderBoard(uni){
+    var ctx = uni.ctx;
+    var px = uni.cellPx, m = uni.margin * px;
+    var view = uni.view;
+    var tilesW = view.maxTx - view.minTx + 1, tilesH = view.maxTy - view.minTy + 1;
+    var cw = tilesW * cfg.cols * px + m * 2, ch = tilesH * cfg.rows * px + m * 2;
+    var panel = cssVar('--panel') || '#171a16';
+    var line = cssVar('--line') || '#2a2e27';
+    var subgrid = cssVar('--subgrid') || '#4c5247';
+    var accent = cssVar('--accent') || '#5fd999';
+    var muted = cssVar('--muted') || '#8d928a';
+
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.fillStyle = panel;
+    ctx.fillRect(0, 0, cw, ch);
+
+    function tileOrigin(tx, ty){
+      return { ox: m + (tx - view.minTx) * cfg.cols * px, oy: m + (ty - view.minTy) * cfg.rows * px };
+    }
+
+    Object.keys(uni.tiles).forEach(function(k){
+      var p = k.split(','), tx = +p[0], ty = +p[1];
+      var cells = uni.tiles[k];
+      var o = tileOrigin(tx, ty);
+      drawTileBase(ctx, o.ox, o.oy, px, panel, muted);
+      drawTileCells(ctx, o.ox, o.oy, px, cells, accent);
+      drawTileGrid(ctx, o.ox, o.oy, px, line);
+      drawTileSubdivision(ctx, o.ox, o.oy, px, subgrid);
+    });
+
+    Object.keys(uni.tiles).forEach(function(k){
+      var p = k.split(','), tx = +p[0], ty = +p[1];
+      var o = tileOrigin(tx, ty);
+      ctx.strokeStyle = subgrid;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(o.ox + 1, o.oy + 1, cfg.cols * px - 2, cfg.rows * px - 2);
+    });
+
+    if (uni.pendingExpansion){
+      uni.pendingExpansion.forEach(function(need){
+        var o = tileOrigin(need.tx, need.ty);
+        var ghostCells = seedForNeed(uni, need);
+        ctx.save();
+        ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(o.ox + 1, o.oy + 1, cfg.cols * px - 2, cfg.rows * px - 2);
+        ctx.restore();
+        ctx.globalAlpha = 0.35;
+        ctx.fillStyle = accent;
+        for (var y = 0; y < cfg.rows; y++){
+          for (var x = 0; x < cfg.cols; x++){
+            if (ghostCells[idxLocal(x, y)]) ctx.fillRect(o.ox + x * px, o.oy + y * px, px - 1, px - 1);
+          }
+        }
+        ctx.globalAlpha = 1;
+      });
+    }
+
+    updateUniStats(uni);
+  }
+
+  function cellFromEvent(uni, e){
+    var rect = uni.canvas.getBoundingClientRect();
+    var px = uni.cellPx, m = uni.margin * px;
+    var cx = e.clientX - rect.left - m, cy = e.clientY - rect.top - m;
+    if (cx < 0 || cy < 0) return null;
+    var tileColPx = cfg.cols * px, tileRowPx = cfg.rows * px;
+    var tileIx = Math.floor(cx / tileColPx), tileIy = Math.floor(cy / tileRowPx);
+    var view = uni.view;
+    if (view.minTx + tileIx > view.maxTx || view.minTy + tileIy > view.maxTy) return null;
+    var lx = Math.floor((cx - tileIx * tileColPx) / px), ly = Math.floor((cy - tileIy * tileRowPx) / px);
+    if (lx < 0 || lx >= cfg.cols || ly < 0 || ly >= cfg.rows) return null;
+    return { tx: view.minTx + tileIx, ty: view.minTy + tileIy, x: lx, y: ly };
+  }
+
+  function setRunning(run){
+    cfg.running = run;
+    var runBtn = document.getElementById('runBtn');
+    var stepBtn = document.getElementById('stepBtn');
+    var resizeBtn = document.getElementById('resizeBtn');
+    runBtn.textContent = run ? 'Pause' : 'Run';
+    stepBtn.disabled = run;
+    resizeBtn.disabled = run;
+    refreshStatus();
+
+    if (cfg.timer){ clearInterval(cfg.timer); cfg.timer = null; }
+    if (run){
+      cfg.timer = setInterval(tick, 1000 / cfg.speed);
+    }
+  }
+
+  function clearBoth(){
+    cfg.gen = 0;
+    universes.forEach(function(u){ resetWorld(u); markBorn(u); setUniPanelsVisible(u.id, true); });
+    universes.forEach(recordPopulation);
+    refreshStatus();
+    if (cfg.activeTab === 'graph') universes.forEach(renderGraph);
+    universes.forEach(resizeCanvasFor);
+  }
+
+  function fillRandomCenter(uni){
+    var cb = centerBounds();
+    var tile = getTile(uni, 0, 0);
+    for (var y = cb.y0; y < cb.y1; y++){
+      for (var x = cb.x0; x < cb.x1; x++){
+        tile[idxLocal(x, y)] = Math.random() < 0.28 ? 1 : 0;
+      }
+    }
+  }
+
+  function isAlive(u){ return Object.keys(u.tiles).length > 0; }
+
+  // Call whenever a universe starts a fresh life (reseeded, reset, or bred):
+  // freezes a copy of its current (0,0) tile as the "original" breeding
+  // material and resets its birth/death bookkeeping.
+  function markBorn(uni){
+    var origin = getTile(uni, 0, 0);
+    uni.originTile = origin ? origin.slice() : makeGrid();
+    uni.bornAtGen = cfg.gen;
+    uni.diedAtGen = null;
+  }
+  function activeUniverses(){ return universes.filter(isAlive); }
+  function dormantUniverses(){ return universes.filter(function(u){ return !isAlive(u); }); }
+
+  function setUniPanelsVisible(id, visible){
+    document.querySelectorAll('[data-uni="' + id + '"]').forEach(function(el){
+      el.hidden = !visible;
+    });
+  }
+
+  // "Breed" (XOR) two parent tiles' centers into a fresh tile: a cell ends
+  // up alive exactly when it's alive in one parent but not the other.
+  function breedTile(tileA, tileB){
+    var cb = centerBounds();
+    var out = makeGrid();
+    for (var y = cb.y0; y < cb.y1; y++){
+      for (var x = cb.x0; x < cb.x1; x++){
+        var i = idxLocal(x, y);
+        out[i] = tileA[i] ^ tileB[i];
+      }
+    }
+    return out;
+  }
+
+  // Random: every universe (dormant ones included) gets reset and an
+  // independent fresh random fill - a full restart of the whole lineup.
+  function randomizeAll(){
+    cfg.gen = 0;
+    universes.forEach(function(u){
+      resetWorld(u);
+      fillRandomCenter(u);
+      markBorn(u);
+      setUniPanelsVisible(u.id, true);
+    });
+    universes.forEach(recordPopulation);
+    refreshStatus();
+    if (cfg.activeTab === 'graph') universes.forEach(renderGraph);
+    universes.forEach(resizeCanvasFor);
+  }
+
+  // The 3 parents to breed: every currently-alive universe, plus - only if
+  // that's short of 3 (multiple universes died in the same tick, skipping
+  // past the "exactly 3 left" checkpoint) - the most-recently-died
+  // universe(s) from that very tick, picked in order of how many
+  // generations they survived (longest-lived casualty first), until there
+  // are 3 parents or no more same-tick casualties to draw on.
+  function selectBreedingParents(){
+    var active = activeUniverses();
+    if (active.length >= 3) return active;
+    var sameTickCasualties = universes.filter(function(u){
+      return !isAlive(u) && u.diedAtGen === cfg.gen;
+    });
+    sameTickCasualties.sort(function(a, b){
+      return (b.diedAtGen - b.bornAtGen) - (a.diedAtGen - a.bornAtGen);
+    });
+    var parents = active.slice();
+    for (var i = 0; i < sameTickCasualties.length && parents.length < 3; i++){
+      parents.push(sameTickCasualties[i]);
+    }
+    return parents;
+  }
+
+  // Once only a few universes are still alive, breed every pairwise
+  // combination of the chosen parents - XOR of each parent's ORIGINAL
+  // (frozen at birth) center, never its current/evolved state - into the
+  // empty slots left by the ones that died out, refilling the lineup. Logs
+  // the breeding event into each child's own creation log for traceability,
+  // same shape as a normal grid-creation entry.
+  function breedAndRefill(){
+    var parents = selectBreedingParents();
+    if (parents.length < 2) return;
+
+    var combos = [];
+    for (var i = 0; i < parents.length; i++){
+      for (var j = i + 1; j < parents.length; j++) combos.push([parents[i], parents[j]]);
+    }
+
+    var parentIds = {};
+    parents.forEach(function(p){ parentIds[p.id] = true; });
+    var slots = dormantUniverses().filter(function(u){ return !parentIds[u.id]; });
+
+    var slot = 0;
+    combos.forEach(function(pair){
+      if (slot >= slots.length) return;
+      var child = slots[slot++];
+      var tA = pair[0].originTile, tB = pair[1].originTile;
+      resetWorld(child);
+      if (tA && tB){
+        var bred = breedTile(tA, tB);
+        child.tiles[tileKey(0, 0)] = bred;
+        markBorn(child);
+        var counted = countSections(bred);
+        child.creationLog.push({
+          gen: cfg.gen,
+          newTile: '0,0',
+          sourceTile: pair[0].id + ' × ' + pair[1].id,
+          direction: 'bred',
+          sections: counted.sections,
+          total: counted.total
+        });
+      } else {
+        markBorn(child);
+      }
+      recordPopulation(child);
+      renderLog(child);
+      setUniPanelsVisible(child.id, true);
+    });
+
+    refreshStatus();
+    if (cfg.activeTab === 'graph') universes.forEach(renderGraph);
+    universes.forEach(resizeCanvasFor);
+  }
+
+  function applySizeBoth(){
+    var wasRunning = cfg.running;
+    if (wasRunning) setRunning(false);
+
+    var newCols = Math.max(4, Math.min(220, parseInt(document.getElementById('cols').value, 10) || cfg.cols));
+    var newRows = Math.max(4, Math.min(220, parseInt(document.getElementById('rows').value, 10) || cfg.rows));
+    var oldCols = cfg.cols, oldRows = cfg.rows;
+
+    var oldTiles = universes.map(function(u){ return getTile(u, 0, 0) || new Uint8Array(oldCols * oldRows); });
+
+    cfg.cols = newCols;
+    cfg.rows = newRows;
+    cfg.gen = 0;
+
+    universes.forEach(function(u, i){
+      var oldTile = oldTiles[i];
+      var newTile = makeGrid();
+      var copyCols = Math.min(oldCols, newCols);
+      var copyRows = Math.min(oldRows, newRows);
+      for (var y = 0; y < copyRows; y++){
+        for (var x = 0; x < copyCols; x++){
+          newTile[y * newCols + x] = oldTile[y * oldCols + x];
+        }
+      }
+      u.tiles = {};
+      u.tiles[tileKey(0, 0)] = newTile;
+      u.tileBirth = {};
+      u.tileBirth[tileKey(0, 0)] = 0;
+      u.pendingExpansion = null;
+      u.creationLog = [];
+      u.popHistory = {};
+      renderLog(u);
+      markBorn(u);
+      setUniPanelsVisible(u.id, true);
+    });
+
+    universes.forEach(recordPopulation);
+    refreshStatus();
+    if (cfg.activeTab === 'graph') universes.forEach(renderGraph);
+    document.getElementById('cols').value = newCols;
+    document.getElementById('rows').value = newRows;
+    universes.forEach(resizeCanvasFor);
+  }
+
+  // --- wiring ---
+  document.getElementById('stepBtn').addEventListener('click', function(){
+    if (!cfg.running) tick();
+  });
+
+  document.getElementById('runBtn').addEventListener('click', function(){
+    setRunning(!cfg.running);
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', function(){
+    setRunning(false);
+    clearBoth();
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', function(){
+    if (!cfg.running) clearBoth();
+  });
+
+  document.getElementById('randomBtn').addEventListener('click', function(){
+    if (!cfg.running) randomizeAll();
+  });
+
+  document.getElementById('resizeBtn').addEventListener('click', applySizeBoth);
+
+  document.getElementById('speed').addEventListener('input', function(e){
+    cfg.speed = parseInt(e.target.value, 10) || 8;
+    if (cfg.running) setRunning(true);
+  });
+
+  document.getElementById('autoPause').addEventListener('change', function(e){
+    cfg.autoPause = e.target.checked;
+    // turning auto-pause off while a ghost is showing: create it now instead
+    // of leaving the user stuck waiting on a pause that no longer happens
+    if (!cfg.autoPause){
+      var anyPending = universes.filter(function(u){ return u.pendingExpansion && u.pendingExpansion.length; });
+      if (anyPending.length){
+        anyPending.forEach(function(u){ materializePendingExpansion(u); resizeCanvasFor(u); });
+      }
+    }
+    refreshStatus();
+  });
+
+  document.getElementById('genLimit').addEventListener('input', function(e){
+    cfg.genLimit = Math.max(0, parseInt(e.target.value, 10) || 0);
+  });
+
+  document.getElementById('stallLimit').addEventListener('input', function(e){
+    cfg.stallLimit = Math.max(0, parseInt(e.target.value, 10) || 0);
+  });
+
+  document.getElementById('stallTolerance').addEventListener('input', function(e){
+    cfg.stallTolerance = Math.max(0, parseFloat(e.target.value) || 0);
+  });
+
+  document.getElementById('minRepro').addEventListener('input', function(e){
+    cfg.minRepro = Math.max(0, parseInt(e.target.value, 10) || 0);
+  });
+
+  function wirePainting(uni){
+    var painting = false;
+    uni.canvas.addEventListener('pointerdown', function(e){
+      if (cfg.running) return;
+      var c = cellFromEvent(uni, e);
+      if (!c) return;
+      var tile = getTile(uni, c.tx, c.ty);
+      if (!tile || !inCenter(c.x, c.y)) return;
+      painting = true;
+      uni.paintValue = tile[idxLocal(c.x, c.y)] ? 0 : 1;
+      tile[idxLocal(c.x, c.y)] = uni.paintValue;
+      uni.pendingExpansion = null;
+      refreshStatus();
+      renderBoard(uni);
+      uni.canvas.setPointerCapture(e.pointerId);
+    });
+    uni.canvas.addEventListener('pointermove', function(e){
+      if (!painting || cfg.running) return;
+      var c = cellFromEvent(uni, e);
+      if (!c) return;
+      var tile = getTile(uni, c.tx, c.ty);
+      if (!tile || !inCenter(c.x, c.y)) return;
+      tile[idxLocal(c.x, c.y)] = uni.paintValue;
+      renderBoard(uni);
+    });
+    uni.canvas.addEventListener('pointerup', function(){ painting = false; });
+    uni.canvas.addEventListener('pointercancel', function(){ painting = false; });
+  }
+  universes.forEach(wirePainting);
+
+  window.addEventListener('resize', function(){
+    universes.forEach(resizeCanvasFor);
+    if (cfg.activeTab === 'graph') universes.forEach(resizeGraphCanvasFor);
+  });
+
+  document.getElementById('tabGridBtn').addEventListener('click', function(){ showTab('grid'); });
+  document.getElementById('tabGraphBtn').addEventListener('click', function(){ showTab('graph'); });
+
+  // --- boot ---
+  function seedGlider(){
+    var cells = makeGrid();
+    var ox = Math.floor(cfg.cols / 2) - 1, oy = Math.floor(cfg.rows / 2) - 1;
+    var glider = [[1,0],[2,1],[0,2],[1,2],[2,2]];
+    glider.forEach(function(p){
+      var x = ox + p[0], y = oy + p[1];
+      if (x >= 0 && x < cfg.cols && y >= 0 && y < cfg.rows) cells[y * cfg.cols + x] = 1;
+    });
+    return cells;
+  }
+
+  function loadUniverseData(uni, data){
+    if (data && data.tiles && Object.keys(data.tiles).length){
+      var tiles = {};
+      Object.keys(data.tiles).forEach(function(k){
+        var bin = atob(data.tiles[k]);
+        var arr = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        tiles[k] = arr;
+      });
+      uni.tiles = tiles;
+      uni.tileBirth = data.tileBirth || {};
+      Object.keys(uni.tiles).forEach(function(k){ if (!(k in uni.tileBirth)) uni.tileBirth[k] = 0; });
+      uni.creationLog = data.creationLog || [];
+      uni.popHistory = data.popHistory || {};
+      if (data.originTile){
+        var bin = atob(data.originTile);
+        var arr = new Uint8Array(bin.length);
+        for (var i2 = 0; i2 < bin.length; i2++) arr[i2] = bin.charCodeAt(i2);
+        uni.originTile = arr;
+      } else {
+        uni.originTile = getTile(uni, 0, 0) || null;
+      }
+      uni.bornAtGen = typeof data.bornAtGen === 'number' ? data.bornAtGen : 0;
+      uni.diedAtGen = typeof data.diedAtGen === 'number' ? data.diedAtGen : null;
+    } else {
+      uni.tiles = {};
+      uni.tiles[tileKey(0, 0)] = seedGlider();
+      uni.tileBirth = {};
+      uni.tileBirth[tileKey(0, 0)] = 0;
+      uni.creationLog = [];
+      uni.popHistory = {};
+      uni.originTile = uni.tiles[tileKey(0, 0)].slice();
+      uni.bornAtGen = 0;
+      uni.diedAtGen = null;
+    }
+    uni.pendingExpansion = null;
+  }
+
+  function start(data){
+    cfg.cols = (data && data.cols) || 48;
+    cfg.rows = (data && data.rows) || 32;
+    cfg.gen = (data && data.gen) || 0;
+    cfg.autoPause = (data && typeof data.autoPause === 'boolean') ? data.autoPause : true;
+    cfg.genLimit = Math.max(0, (data && data.genLimit) || 0);
+    cfg.stallLimit = Math.max(0, (data && data.stallLimit) || 0);
+    cfg.stallTolerance = Math.max(0, (data && typeof data.stallTolerance === 'number') ? data.stallTolerance : 0.5);
+    cfg.minRepro = Math.max(0, (data && typeof data.minRepro === 'number') ? data.minRepro : 1);
+    document.getElementById('cols').value = cfg.cols;
+    document.getElementById('rows').value = cfg.rows;
+    document.getElementById('autoPause').checked = cfg.autoPause;
+    document.getElementById('genLimit').value = cfg.genLimit;
+    document.getElementById('stallLimit').value = cfg.stallLimit;
+    document.getElementById('stallTolerance').value = cfg.stallTolerance;
+    document.getElementById('minRepro').value = cfg.minRepro;
+
+    universes.forEach(function(u){
+      loadUniverseData(u, data && data['uni' + u.id]);
+      if (!Object.keys(u.popHistory).length) recordPopulation(u);
+      setUniPanelsVisible(u.id, isAlive(u));
+    });
+    refreshStatus();
+    universes.forEach(renderLog);
+    if (cfg.activeTab === 'graph') universes.forEach(renderGraph);
+    universes.forEach(resizeCanvasFor);
+  }
+
+  function serializeUniverse(uni){
+    var tilesOut = {};
+    Object.keys(uni.tiles).forEach(function(k){
+      var c = uni.tiles[k], bin = '';
+      for (var i = 0; i < c.length; i++) bin += String.fromCharCode(c[i]);
+      tilesOut[k] = btoa(bin);
+    });
+    var originOut = null;
+    if (uni.originTile){
+      var ob = '';
+      for (var j = 0; j < uni.originTile.length; j++) ob += String.fromCharCode(uni.originTile[j]);
+      originOut = btoa(ob);
+    }
+    return {
+      tiles: tilesOut, tileBirth: uni.tileBirth, creationLog: uni.creationLog, popHistory: uni.popHistory,
+      originTile: originOut, bornAtGen: uni.bornAtGen, diedAtGen: uni.diedAtGen
+    };
+  }
+
+  function snapshot(){
+    var out = {
+      cols: cfg.cols, rows: cfg.rows, gen: cfg.gen,
+      autoPause: cfg.autoPause, genLimit: cfg.genLimit, stallLimit: cfg.stallLimit,
+      stallTolerance: cfg.stallTolerance, minRepro: cfg.minRepro
+    };
+    universes.forEach(function(u){ out['uni' + u.id] = serializeUniverse(u); });
+    return out;
+  }
+
+  if (window.claude && window.claude.hot){
+    window.claude.hot.snapshot(snapshot);
+    if (window.claude.hot.ready) window.claude.hot.ready(start); else start(window.claude.hot.data || {});
+  } else {
+    start({});
+  }
+})();
+</script>
+</body>
+</html>
